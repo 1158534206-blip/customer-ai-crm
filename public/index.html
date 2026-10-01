@@ -19,23 +19,45 @@
     <div id="loginError" class="error"></div>
   </div>
 </div>
+
 <div id="app" class="app hidden">
   <aside class="sidebar">
-    <div class="brand"><div class="brand-mark small">营</div><div><b>客户营销总控台</b><span>CRM + AI运营助手</span></div></div>
+    <div class="brand">
+      <div class="brand-mark small">营</div>
+      <div><b>客户营销总控台</b><span>CRM + AI运营助手</span></div>
+    </div>
     <nav id="nav">
       <button data-view="dashboard" class="active">总控台</button>
       <button data-view="customers">客户档案</button>
       <button data-view="tasks">待办任务</button>
       <button data-view="settings">设置与备份</button>
     </nav>
-    <div class="sidebar-footer"><span id="aiStatus" class="status"></span><button id="logoutBtn" class="link hidden">退出</button></div>
+    <div class="sidebar-footer">
+      <span id="storageStatus" class="muted tiny"></span>
+      <span id="aiStatus" class="status"></span>
+      <button id="logoutBtn" class="link hidden">退出</button>
+    </div>
   </aside>
+
   <main class="main">
-    <header class="topbar"><button id="menuBtn" class="icon mobile">☰</button><div id="pageTitle"><h1>总控台</h1><p>客户、内容、培训、数据和AI都放在这里</p></div><div class="top-actions"><button id="quickAdd" class="btn primary">＋ 新增客户</button></div></header>
-    <section id="content"></section>
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn">☰</button>
+      <div id="pageTitle" class="page-title"></div>
+      <span class="spacer"></span>
+      <button id="quickAdd" class="btn primary">＋ 新增客户</button>
+    </header>
+    <div id="content" class="content"></div>
   </main>
 </div>
-<div id="modal" class="modal hidden"><div class="modal-backdrop"></div><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">新增客户</h2><button id="modalClose" class="icon">×</button></div><div id="modalBody"></div></div></div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="modalTitle"></h2><button id="modalClose" class="icon-btn">✕</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 <script src="/app.js"></script>
 </body>
