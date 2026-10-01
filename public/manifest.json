@@ -1,0 +1,9 @@
+{
+  "name":"客户营销总控台",
+  "short_name":"营销总控台",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#f5f6f8",
+  "theme_color":"#111827",
+  "icons":[]
+}

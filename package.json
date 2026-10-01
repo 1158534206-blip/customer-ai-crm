@@ -1,0 +1,17 @@
+{
+  "name": "customer-ai-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "客户营销总控台：客户长期档案、内容、培训、数据复盘与 AI 运营助手",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}
