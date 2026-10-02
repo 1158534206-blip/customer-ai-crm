@@ -35,5 +35,5 @@ nav{display:grid;gap:6px}nav button{border:0;background:transparent;color:#cbd5e
 }
 @media print{.sidebar,.topbar,.tabs,.btn,.question-tools,.no-print,.msg-tools{display:none!important}.main{margin:0;width:100%}.content{padding:0}.card,.question,.content-item,.training-card{break-inside:avoid;box-shadow:none}.app{display:block}.modal{display:none!important}}
 
-#saveStatus{max-width:220px;font-size:12px;text-align:right}
+#saveStatus{color:var(--muted);max-width:220px;font-size:12px;text-align:right}
 @media(max-width:760px){.topbar{flex-wrap:wrap;height:auto;min-height:66px;gap:6px}#saveStatus{order:5;flex-basis:100%;max-width:none;text-align:right}.topbar .page-title{min-width:0}}
