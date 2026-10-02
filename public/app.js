@@ -5,11 +5,24 @@ const App = (() => {
   let currentView = 'dashboard';
   let currentClientId = null;
   let currentTab = 'overview';
+  let pendingModule = null;
   let saveTimer = null;
   let dirty = false;
   let savePromise = null;
 
   const CONTENT_STATUSES = ['灵感','待写','待拍','已拍','待发布','已发布','已复盘'];
+  const WORKSPACE_MODULES = [
+    ['overview','客户总览','查看当前阶段、下一步动作和跟进进度'],
+    ['profile','客户档案','经营资料、产品、老板经历与长期备注'],
+    ['interview','深度访谈','148 个问题，记录回答、重要内容与追问'],
+    ['strategy','运营规划','31 项规划，涵盖定位、人设、包装和内容方向'],
+    ['content','内容文案库','7 个内容状态，完整口播、镜头与补素材'],
+    ['training','上门培训','三次标准教案与每次实际执行记录'],
+    ['tasks','客户作业','布置、提交、反馈、问题与验收'],
+    ['metrics','视频数据','播放、咨询、到店、成交等 12 项数据'],
+    ['timeline','客户时间线','串起沟通、培训、拍摄和复盘记录'],
+    ['ai','AI运营助手','结合客户档案讨论，结果保存回对应模块']
+  ];
 
   const interviewGroups = [
     { id:'basic', title:'基础身份与经营背景', questions:[
@@ -413,7 +426,7 @@ const App = (() => {
     </div>`;
   }
   function bindClientCards(){
-    $$('[data-client]').forEach(el=>el.onclick=()=>{currentClientId=el.dataset.client;currentView='customers';currentTab='overview';render()});
+    $$('[data-client]').forEach(el=>el.onclick=()=>{currentClientId=el.dataset.client;currentView='customers';currentTab=pendingModule||'overview';pendingModule=null;render()});
   }
 
   function renderDashboard(){
@@ -426,7 +439,11 @@ const App = (() => {
     const recentMetrics=cs.flatMap(c=>c.metrics.map(m=>({...m,clientName:c.name,clientId:c.id}))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,6);
 
     $('#content').innerHTML=`
-      <div class="card" style="margin-bottom:18px"><span class="tag blue">V2.1 · 客户长期陪跑</span><h2>从第一次访谈，到每一次培训与复盘</h2><p class="small">新增或打开一个客户，即可进入他的独立工作空间：客户档案、深度访谈、运营规划、内容库、培训、作业、视频数据、时间线和 AI 助手。</p></div>
+      <section class="workspace-launcher" aria-label="客户完整工作空间">
+        <div class="section-head"><div><span class="tag blue">客户长期陪跑 · 完整功能</span><h2>10 个客户模块，开始今天的工作</h2><p class="small">148 个深度访谈问题 · 31 项运营规划 · 三次上门培训教案</p></div></div>
+        <div class="module-grid">${WORKSPACE_MODULES.map(([id,label,description],index)=>`<button class="module-card" data-module="${id}"><span class="module-number">${String(index+1).padStart(2,'0')}</span><strong>${label}</strong><span>${description}</span><span class="module-link">进入模块 →</span></button>`).join('')}</div>
+        <p class="small">每位客户都有独立记录。点击一个模块，选择客户或新建客户后即可开始。</p>
+      </section>
       <div class="grid cols4">
         <div class="card stat"><strong>${cs.length}</strong><span>全部客户</span></div>
         <div class="card stat"><strong>${active}</strong><span>进行中客户</span></div>
@@ -440,13 +457,16 @@ const App = (() => {
         <div class="card"><h3>最近视频数据</h3>${recentMetrics.map(m=>`<div class="metric-item"><b>${esc(m.clientName)}｜${esc(m.title||'未命名视频')}</b><div class="small">${esc(m.date||'')} · 播放 ${m.views||0} · 咨询 ${m.inquiries||0} · 到店 ${m.storeVisits||0} · 成交 ${m.sales||0}</div></div>`).join('')||'<div class="small">还没有录入视频数据</div>'}</div>
       </div>`;
     bindClientCards();
+    $$('[data-module]').forEach(button=>button.onclick=()=>{pendingModule=button.dataset.module;currentClientId=null;currentView='customers';render()});
     $('[data-action="allClients"]')?.addEventListener('click',()=>{currentView='customers';currentClientId=null;render()});
   }
 
   function renderCustomers(){
-    setPage('客户档案','所有客户长期资料、进度和下一步');
+    const selectedModule=WORKSPACE_MODULES.find(([id])=>id===pendingModule);
+    setPage(selectedModule?`${selectedModule[1]} · 选择客户`:'客户档案',selectedModule?'选择要操作的客户，或新建一份长期档案':'所有客户长期资料、进度和下一步');
     const cs=state.clients.map(ensureClient);
     $('#content').innerHTML=`
+      ${selectedModule?`<div class="card"><h2>${selectedModule[1]}</h2><p class="small">${selectedModule[2]}。${cs.length?'选择下面的客户，即可打开这个模块。':'先新增客户，就会直接打开这个模块，资料会归入该客户档案。'}</p></div>`:''}
       <div class="card"><div class="toolbar"><input id="clientSearch" style="max-width:440px;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px" placeholder="搜索客户、地区、行业、合作类型"><span class="spacer"></span><button class="btn primary" data-action="newClient">＋ 新增客户</button></div></div>
       <div id="clientList">${cs.length?`<div class="client-grid">${cs.map(clientCard).join('')}</div>`:'<div class="empty">暂无客户</div>'}</div>`;
     bindClientCards();
@@ -782,7 +802,7 @@ const App = (() => {
           addTimeline(c,'更新客户基础档案','基础资料已调整','档案');scheduleSave();
         }else{
           createClient({name:$('#m-name').value.trim(),area:$('#m-area').value.trim(),industry:$('#m-industry').value.trim(),serviceType:$('#m-service').value,status:$('#m-status').value,stage:$('#m-stage').value,person:$('#m-person').value,products:$('#m-products').value,goal:$('#m-goal').value,problem:$('#m-problem').value,advantages:$('#m-advantages').value,history:$('#m-history').value,family:$('#m-family').value});
-          currentView='customers';currentTab='overview';
+          currentView='customers';currentTab=pendingModule||'overview';pendingModule=null;
         }
         closeModal();render();
       };
@@ -961,7 +981,7 @@ const App = (() => {
   }
 
   function initEvents(){
-    $$('#nav button').forEach(b=>b.onclick=()=>{currentView=b.dataset.view;if(currentView!=='customers')currentClientId=null;render()});
+    $$('#nav button').forEach(b=>b.onclick=()=>{pendingModule=null;currentView=b.dataset.view;if(currentView!=='customers')currentClientId=null;$('.sidebar').classList.remove('open');render()});
     $('#quickAdd').onclick=()=>openClientModal();
     $('#modalClose').onclick=closeModal;$('.modal-backdrop').onclick=closeModal;
     $('#menuBtn').onclick=()=>$('.sidebar').classList.toggle('open');
