@@ -21,7 +21,7 @@ if (DATABASE_URL) {
       ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false }
     });
   } catch (e) {
-    console.error('DATABASE_URL 已配置，但 pg 未安装：', e.message);
+    throw new Error('DATABASE_URL 已配置，但数据库驱动加载失败，已停止启动以避免数据写入临时文件。', {cause:e});
   }
 }
 
@@ -53,8 +53,7 @@ async function readState() {
     const r = await pool.query('SELECT data FROM crm_state WHERE id=$1', ['main']);
     return r.rows[0]?.data || emptyState();
   }
-  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
-  catch { return emptyState(); }
+  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
 }
 
 async function writeState(state) {
@@ -176,6 +175,7 @@ async function callAI(client, message, history=[]) {
   ];
   const r = await fetch(`${DEEPSEEK_API_URL}/chat/completions`, {
     method: 'POST',
+    signal: AbortSignal.timeout(90000),
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
@@ -184,7 +184,9 @@ async function callAI(client, message, history=[]) {
   });
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'AI调用失败');
-  return data?.choices?.[0]?.message?.content || '';
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('AI没有返回内容，请稍后重试');
+  return content;
 }
 
 function serveStatic(req, res) {
@@ -192,7 +194,7 @@ function serveStatic(req, res) {
   let pathname = decodeURIComponent(url.pathname);
   if (pathname === '/') pathname = '/index.html';
   const file = path.normalize(path.join(PUBLIC_DIR, pathname));
-  if (!file.startsWith(PUBLIC_DIR)) return send(res,403,'Forbidden','text/plain; charset=utf-8');
+  if (!file.startsWith(PUBLIC_DIR + path.sep)) return send(res,403,'Forbidden','text/plain; charset=utf-8');
   fs.stat(file, (err, stat) => {
     if (err || !stat.isFile()) {
       const index = path.join(PUBLIC_DIR, 'index.html');
@@ -211,7 +213,11 @@ function serveStatic(req, res) {
 const server = http.createServer(async (req,res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
-    if (url.pathname === '/api/health') return send(res,200,{ok:true,storage:pool?'postgres':'json'});
+    if (url.pathname === '/api/health') {
+      try { await readState(); }
+      catch { return send(res,503,{ok:false,error:'存储暂不可用'}); }
+      return send(res,200,{ok:true,version:'2.1.0',storage:pool?'postgres':'json'});
+    }
     if (url.pathname === '/api/config' && req.method === 'GET') {
       return send(res,200,{
         authRequired:!!APP_PASSWORD, authed:isAuthed(req), aiEnabled:!!process.env.DEEPSEEK_API_KEY,
@@ -245,6 +251,8 @@ const server = http.createServer(async (req,res) => {
       const body = await bodyJson(req);
       const state = await readState();
       const client = state.clients.find(c => c.id === body.clientId) || null;
+      if (!client) return send(res,404,{error:'客户不存在，请先保存客户资料'});
+      if (typeof body.message !== 'string' || !body.message.trim()) return send(res,400,{error:'请输入问题'});
       const text = await callAI(client, body.message, Array.isArray(body.history) ? body.history : []);
       return send(res,200,{text});
     }
@@ -268,12 +276,12 @@ const server = http.createServer(async (req,res) => {
     return serveStatic(req,res);
   } catch(e) {
     console.error(e);
-    return send(res,500,{error:e.message || '服务器错误'});
+    return send(res,e instanceof SyntaxError || e instanceof URIError ? 400 : 500,{error:e.message || '服务器错误'});
   }
 });
 
 initStorage().then(() => {
-  server.listen(PORT,'0.0.0.0',()=>console.log(`Customer AI CRM v2 running on http://0.0.0.0:${PORT} · ${pool?'PostgreSQL':'JSON'}`));
+  server.listen(PORT,'0.0.0.0',()=>console.log(`Customer AI CRM v2.1 running on http://0.0.0.0:${server.address().port} · ${pool?'PostgreSQL':'JSON'}`));
 }).catch(err => {
   console.error('存储初始化失败', err);
   process.exit(1);

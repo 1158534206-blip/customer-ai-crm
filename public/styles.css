@@ -34,3 +34,6 @@ nav{display:grid;gap:6px}nav button{border:0;background:transparent;color:#cbd5e
  .cols2,.cols3,.cols4,.client-grid,.form-grid,.summary-grid{grid-template-columns:1fr}.full-row{grid-column:auto}.hero{align-items:flex-start;flex-wrap:wrap}.hero .actions{width:100%;margin-left:0}.kvs{grid-template-columns:1fr}.kvs b{margin-top:5px}.metric-grid{grid-template-columns:repeat(3,1fr)}.modal{padding:0}.modal-card{width:100%;height:100vh;max-height:none;border-radius:0}.tabs{margin-left:-2px;margin-right:-2px}.chat-wrap{grid-template-rows:55vh auto}.msg{max-width:96%}
 }
 @media print{.sidebar,.topbar,.tabs,.btn,.question-tools,.no-print,.msg-tools{display:none!important}.main{margin:0;width:100%}.content{padding:0}.card,.question,.content-item,.training-card{break-inside:avoid;box-shadow:none}.app{display:block}.modal{display:none!important}}
+
+#saveStatus{max-width:220px;font-size:12px;text-align:right}
+@media(max-width:760px){.topbar{flex-wrap:wrap;height:auto;min-height:66px;gap:6px}#saveStatus{order:5;flex-basis:100%;max-width:none;text-align:right}.topbar .page-title{min-width:0}}

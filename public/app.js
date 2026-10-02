@@ -6,6 +6,8 @@ const App = (() => {
   let currentClientId = null;
   let currentTab = 'overview';
   let saveTimer = null;
+  let dirty = false;
+  let savePromise = null;
 
   const CONTENT_STATUSES = ['灵感','待写','待拍','已拍','待发布','已发布','已复盘'];
 
@@ -284,8 +286,29 @@ const App = (() => {
     return data;
   }
   function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),1800)}
-  function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(save,450)}
-  async function save(){state.version=2;await api('/api/state',{method:'PUT',body:JSON.stringify(state)});}
+  function saveStatus(message){$('#saveStatus').textContent=message;}
+  function scheduleSave(){
+    dirty=true;saveStatus('有修改，等待保存');clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>save().catch(()=>{}),450);
+  }
+  async function save(){
+    clearTimeout(saveTimer);
+    if(savePromise)return savePromise;
+    savePromise=(async()=>{
+      while(dirty){
+        dirty=false;state.version=2;saveStatus('正在保存…');
+        try{
+          const result=await api('/api/state',{method:'PUT',body:JSON.stringify(state)});
+          state.updatedAt=result.updatedAt;
+        }catch(e){
+          dirty=true;saveStatus('保存失败，请检查网络后点此重试');
+          toast(`保存失败：${e.message}`);throw e;
+        }
+      }
+      saveStatus('全部修改已保存');
+    })();
+    try{await savePromise;}finally{savePromise=null;}
+  }
 
   function defaultBasic(){return {
     person:'',products:'',goal:'',problem:'',advantages:'',targetAudience:'',competitors:'',
@@ -364,7 +387,7 @@ const App = (() => {
     state=await api('/api/state');
     state.clients=(state.clients||[]).map(ensureClient);
     $('#login').classList.add('hidden');$('#app').classList.remove('hidden');
-    $('#aiStatus').textContent=config.aiEnabled?`AI已连接 · ${config.model}`:'AI未配置';
+    $('#aiStatus').textContent=config.aiEnabled?`AI已配置 · ${config.model}`:'AI未配置';
     $('#aiStatus').classList.toggle('on',config.aiEnabled);
     $('#storageStatus').textContent=`存储：${config.storage||'未知'}`;
     $('#logoutBtn').classList.toggle('hidden',!config.authRequired);
@@ -403,6 +426,7 @@ const App = (() => {
     const recentMetrics=cs.flatMap(c=>c.metrics.map(m=>({...m,clientName:c.name,clientId:c.id}))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,6);
 
     $('#content').innerHTML=`
+      <div class="card" style="margin-bottom:18px"><span class="tag blue">V2.1 · 客户长期陪跑</span><h2>从第一次访谈，到每一次培训与复盘</h2><p class="small">新增或打开一个客户，即可进入他的独立工作空间：客户档案、深度访谈、运营规划、内容库、培训、作业、视频数据、时间线和 AI 助手。</p></div>
       <div class="grid cols4">
         <div class="card stat"><strong>${cs.length}</strong><span>全部客户</span></div>
         <div class="card stat"><strong>${active}</strong><span>进行中客户</span></div>
@@ -696,6 +720,7 @@ const App = (() => {
     c.chat.push({role:'user',content:msg,date:now()});scheduleSave();renderClient();
     const log=$('#chatLog');if(log){log.innerHTML+=`<div class="msg assistant" id="thinking">正在结合客户档案分析……</div>`;log.scrollTop=log.scrollHeight}
     try{
+      await save();
       const history=c.chat.slice(0,-1);
       const r=await api('/api/ai',{method:'POST',body:JSON.stringify({clientId:c.id,message:msg,history})});
       c.chat.push({role:'assistant',content:r.text,date:now()});scheduleSave();renderClient();
@@ -722,7 +747,11 @@ const App = (() => {
     $('[data-action="import"]')?.addEventListener('click',()=>$('#importFile').click());
     $('#importFile')?.addEventListener('change',async e=>{
       const f=e.target.files[0];if(!f)return;if(!confirm('导入会覆盖当前全部客户数据，确定继续？'))return;
-      const txt=await f.text();const data=JSON.parse(txt);await api('/api/import',{method:'POST',body:JSON.stringify(data)});toast('导入成功');await load();
+      try{
+        const txt=await f.text();const data=JSON.parse(txt);
+        await save();await api('/api/import',{method:'POST',body:JSON.stringify(data)});
+        toast('导入成功');await load();
+      }catch(error){toast(`导入失败：${error.message}`);}
     });
   }
 
@@ -937,7 +966,11 @@ const App = (() => {
     $('#modalClose').onclick=closeModal;$('.modal-backdrop').onclick=closeModal;
     $('#menuBtn').onclick=()=>$('.sidebar').classList.toggle('open');
     $('#loginBtn').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#loginPassword').value})});await load()}catch(e){$('#loginError').textContent=e.message}};
-    $('#logoutBtn').onclick=async()=>{await api('/api/logout',{method:'POST',body:'{}'});location.reload()};
+    $('#saveStatus').onclick=()=>save().catch(()=>{});
+    window.addEventListener('beforeunload',e=>{if(dirty||savePromise){e.preventDefault();e.returnValue='';}});
+    window.addEventListener('online',()=>{if(dirty)save().catch(()=>{});});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&dirty)save().catch(()=>{});});
+    $('#logoutBtn').onclick=async()=>{try{await save();await api('/api/logout',{method:'POST',body:'{}'});location.reload()}catch(e){toast(`退出失败：${e.message}`)}};
     if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
   }
 

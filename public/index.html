@@ -4,15 +4,16 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="theme-color" content="#111827"/>
-<title>客户营销总控台</title>
+<title>客户营销总控台 V2.1</title>
 <link rel="manifest" href="/manifest.json"/>
-<link rel="stylesheet" href="/styles.css?v=3"/>
+<link rel="stylesheet" href="/styles.css?v=4"/>
 </head>
 <body>
 <div id="login" class="login hidden">
   <div class="login-card">
     <div class="brand-mark">营</div>
     <h1>客户营销总控台</h1>
+    <p>V2.1 · 客户档案 / 深度访谈 / 培训陪跑 / AI助手</p>
     <p>输入访问密码</p>
     <input id="loginPassword" type="password" placeholder="密码"/>
     <button id="loginBtn" class="btn primary full">进入系统</button>
@@ -24,7 +25,7 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark small">营</div>
-      <div><b>客户营销总控台</b><span>CRM + AI运营助手</span></div>
+      <div><b>客户营销总控台</b><span>V2.1 · CRM + AI运营助手</span></div>
     </div>
     <nav id="nav">
       <button data-view="dashboard" class="active">总控台</button>
@@ -44,6 +45,7 @@
       <button id="menuBtn" class="icon-btn">☰</button>
       <div id="pageTitle" class="page-title"></div>
       <span class="spacer"></span>
+      <button id="saveStatus" class="link" aria-live="polite">资料已加载</button>
       <button id="quickAdd" class="btn primary">＋ 新增客户</button>
     </header>
     <div id="content" class="content"></div>
@@ -59,6 +61,6 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
-<script src="/app.js?v=3"></script>
+<script src="/app.js?v=4"></script>
 </body>
 </html>
