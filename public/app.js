@@ -6,6 +6,7 @@ const App = (() => {
   let currentClientId = null;
   let currentTab = 'overview';
   let pendingModule = null;
+  let trafficSub = 'controversy';
   let saveTimer = null;
   let dirty = false;
   let savePromise = null;
@@ -17,6 +18,8 @@ const App = (() => {
     ['interview','深度访谈','148 个问题，记录回答、重要内容与追问'],
     ['strategy','运营规划','31 项规划，涵盖定位、人设、包装和内容方向'],
     ['content','内容文案库','7 个内容状态，完整口播、镜头与补素材'],
+    ['traffic','同城泛流量','城市争议话题、藏宝、街头采访模板库'],
+    ['instore','店内日常拍摄','接客、第一视角、账单、制作、售后、开收店模板'],
     ['training','上门培训','三次标准教案与每次实际执行记录'],
     ['tasks','客户作业','布置、提交、反馈、问题与验收'],
     ['metrics','视频数据','播放、咨询、到店、成交等 12 项数据'],
@@ -440,7 +443,7 @@ const App = (() => {
 
     $('#content').innerHTML=`
       <section class="workspace-launcher" aria-label="客户完整工作空间">
-        <div class="section-head"><div><span class="tag blue">客户长期陪跑 · 完整功能</span><h2>10 个客户模块，开始今天的工作</h2><p class="small">148 个深度访谈问题 · 31 项运营规划 · 三次上门培训教案</p></div></div>
+        <div class="section-head"><div><span class="tag blue">客户长期陪跑 · 完整功能</span><h2>12 个客户模块，开始今天的工作</h2><p class="small">148 个深度访谈问题 · 31 项运营规划 · 同城泛流量 + 店内日常模板库</p></div></div>
         <div class="module-grid">${WORKSPACE_MODULES.map(([id,label,description],index)=>`<button class="module-card" data-module="${id}"><span class="module-number">${String(index+1).padStart(2,'0')}</span><strong>${label}</strong><span>${description}</span><span class="module-link">进入模块 →</span></button>`).join('')}</div>
         <p class="small">每位客户都有独立记录。点击一个模块，选择客户或新建客户后即可开始。</p>
       </section>
@@ -482,7 +485,7 @@ const App = (() => {
   function renderClient(){
     const c=client();if(!c){currentClientId=null;return renderCustomers()}ensureClient(c);
     setPage(c.name,`${c.area||'未填地区'} · ${c.industry||'未填行业'} · ${c.serviceType}`);
-    const tabs=[['overview','总览'],['profile','客户档案'],['interview','深度访谈'],['strategy','运营规划'],['content','内容库'],['training','培训'],['tasks','作业'],['metrics','视频数据'],['timeline','时间线'],['ai','AI助手']];
+    const tabs=[['overview','总览'],['profile','客户档案'],['interview','深度访谈'],['strategy','运营规划'],['content','内容库'],['traffic','同城泛流量'],['instore','店内日常'],['training','培训'],['tasks','作业'],['metrics','视频数据'],['timeline','时间线'],['ai','AI助手']];
     $('#content').innerHTML=`
       <div class="card hero">
         <div class="avatar">${esc(c.name.slice(0,1))}</div>
@@ -499,6 +502,8 @@ const App = (() => {
     if(currentTab==='interview')renderInterview(c);
     if(currentTab==='strategy')renderStrategy(c);
     if(currentTab==='content')renderContent(c);
+    if(currentTab==='traffic')renderTraffic(c);
+    if(currentTab==='instore')renderInStore(c);
     if(currentTab==='training')renderTraining(c);
     if(currentTab==='tasks')renderClientTasks(c);
     if(currentTab==='metrics')renderMetrics(c);
@@ -747,6 +752,53 @@ const App = (() => {
     }catch(e){
       c.chat.push({role:'assistant',content:`AI调用失败：${e.message}`,date:now()});scheduleSave();renderClient();
     }
+  }
+
+  function renderTraffic(c){
+    const T=(window.TEMPLATE_TYPES||{}).traffic;
+    if(!T){$('#clientTab').innerHTML='<div class="empty">模板库未加载，请刷新页面。</div>';return}
+    $('#clientTab').innerHTML=`
+      <div class="card"><div class="toolbar"><div><h3 style="margin:0">同城泛流量</h3><div class="small">城市争议话题 · 同城藏宝 · 街头采访。点「AI 生成」会结合当前客户档案现场生成，生成后可存回内容库。</div></div></div></div>
+      <div class="tabs">
+        <button data-tsub="controversy" class="${trafficSub==='controversy'?'active':''}">城市争议话题</button>
+        <button data-tsub="treasure" class="${trafficSub==='treasure'?'active':''}">同城藏宝</button>
+        <button data-tsub="interview" class="${trafficSub==='interview'?'active':''}">街头采访</button>
+      </div>
+      <div id="trafficBody">${trafficSub==='controversy'?renderTypeGrid(T.controversy,'traffic:controversy'):trafficSub==='treasure'?renderTypeGrid(T.treasure,'traffic:treasure'):renderTypeGrid(T.interview,'traffic:interview')}</div>`;
+    $$('#clientTab .tabs button').forEach(b=>b.onclick=()=>{trafficSub=b.dataset.tsub;renderTraffic(c)});
+    bindTemplateAI();
+  }
+
+  function renderInStore(c){
+    const L=(window.TEMPLATE_TYPES||{}).inStore;
+    if(!L){$('#clientTab').innerHTML='<div class="empty">模板库未加载，请刷新页面。</div>';return}
+    $('#clientTab').innerHTML=`
+      <div class="card"><div class="toolbar"><div><h3 style="margin:0">店内日常拍摄</h3><div class="small">接客讲产品 · 顾客第一视角 · 消费账单 · 制作交付 · 售后 · 开收店。点「AI 生成」结合当前客户门店与产品现场生成。</div></div></div></div>
+      ${renderTypeGrid(L,'inStore')}`;
+    bindTemplateAI();
+  }
+
+  function renderTypeGrid(items,prefix){
+    return `<div class="grid cols2">${items.map((t,i)=>`
+      <div class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div><h4 style="margin:0">${esc(t.name)}</h4><div class="small">${esc(t.desc)}</div></div>
+        <div class="actions" style="margin-top:auto"><button class="btn small primary" data-ai-template="${prefix}:${i}">AI 生成</button></div>
+      </div>`).join('')}</div>`;
+  }
+
+  function bindTemplateAI(){
+    $$('[data-ai-template]').forEach(b=>{if(b._aibound)return;b._aibound=true;b.onclick=()=>aiGenerate(b.dataset.aiTemplate)});
+  }
+
+  function aiGenerate(key){
+    const p=key.split(':');
+    const T=window.TEMPLATE_TYPES||{};
+    let prompt='';
+    if(p[0]==='traffic'){const sub=p[1],i=Number(p[2]);prompt=(T.traffic&&T.traffic[sub]&&T.traffic[sub][i])?.prompt||''}
+    else if(p[0]==='inStore'){const i=Number(p[1]);prompt=(T.inStore&&T.inStore[i])?.prompt||''}
+    if(!prompt){toast('模板未找到');return}
+    currentTab='ai';renderClient();
+    setTimeout(()=>quickAI(`${prompt}\n\n请基于当前客户真实档案直接生成，给我可直接拍的：开头、完整口播、镜头/补素材建议。资料不足处写“需要补充”，不要编造。`),40);
   }
 
   function renderAllTasks(){
